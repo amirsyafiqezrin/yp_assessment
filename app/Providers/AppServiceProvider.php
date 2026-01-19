@@ -19,6 +19,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \Illuminate\Support\Facades\Gate::define('access-lecturer-portal', function (\App\Models\User $user) {
+            return $user->isLecturer();
+        });
+
+        \Illuminate\Support\Facades\Gate::define('access-student-portal', function (\App\Models\User $user) {
+            return $user->isStudent();
+        });
     }
 }

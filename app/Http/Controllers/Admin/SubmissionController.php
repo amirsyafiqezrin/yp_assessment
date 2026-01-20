@@ -10,7 +10,7 @@ class SubmissionController extends Controller
 {
     public function index()
     {
-        $submissions = Submission::with(['user', 'exam'])->latest()->get();
+        $submissions = Submission::with(['user', 'exam'])->latest()->paginate(10);
         return view('admin.submissions.index', compact('submissions'));
     }
 

@@ -34,6 +34,20 @@ class ExamController extends Controller
             ]
         );
 
+        return redirect()->route('student.exams.take', $exam);
+    }
+
+    public function take(Exam $exam)
+    {
+        $submission = Submission::where('user_id', auth()->id())
+            ->where('exam_id', $exam->id)
+            ->firstOrFail();
+
+        // If already submitted, redirect to history or show error
+        if ($submission->submitted_at) {
+            return redirect()->route('student.exams.history')->with('error', 'You have already submitted this exam.');
+        }
+
         return view('student.exams.take', compact('exam', 'submission'));
     }
 

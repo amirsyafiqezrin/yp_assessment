@@ -17,7 +17,7 @@ class StudentController extends Controller
     public function index()
     {
         // Filter only students
-        $students = User::where('role', User::ROLE_STUDENT)->with('schoolClass')->get();
+        $students = User::where('role', User::ROLE_STUDENT)->with('schoolClass')->paginate(10);
         return view('admin.students.index', compact('students'));
     }
 

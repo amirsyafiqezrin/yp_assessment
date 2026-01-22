@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
+use App\Models\User;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,11 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Support\Facades\Gate::define('access-lecturer-portal', function (\App\Models\User $user) {
+        Gate::define('access-lecturer-portal', function (User $user) {
             return $user->isLecturer();
         });
 
-        \Illuminate\Support\Facades\Gate::define('access-student-portal', function (\App\Models\User $user) {
+        Gate::define('access-student-portal', function (User $user) {
             return $user->isStudent();
         });
     }

@@ -36,14 +36,14 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="mb-4">
-                                <x-input-label for="start_time" :value="__('Start Time (Optional)')" />
+                                <x-input-label for="start_time" :value="__('Start Time')" />
                                 <x-text-input id="start_time" class="block mt-1 w-full" type="datetime-local"
-                                    name="start_time" :value="old('start_time')" />
+                                    name="start_time" :value="old('start_time')" required />
                             </div>
                             <div class="mb-4">
-                                <x-input-label for="end_time" :value="__('End Time (Optional)')" />
+                                <x-input-label for="end_time" :value="__('End Time')" />
                                 <x-text-input id="end_time" class="block mt-1 w-full" type="datetime-local"
-                                    name="end_time" :value="old('end_time')" />
+                                    name="end_time" :value="old('end_time')" required />
                             </div>
                         </div>
 

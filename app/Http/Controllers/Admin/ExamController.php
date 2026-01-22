@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\Subject;
+use App\Models\Question;
 use App\Models\SchoolClass;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class ExamController extends Controller
 {
@@ -41,7 +43,17 @@ class ExamController extends Controller
             'end_time' => 'nullable|date|after:start_time',
         ]);
 
-        Exam::create($request->all());
+        $data = $request->all();
+
+        if ($request->filled('start_time')) {
+            $data['start_time'] = Carbon::parse($request->start_time, 'Asia/Kuala_Lumpur')->setTimezone('UTC');
+        }
+
+        if ($request->filled('end_time')) {
+            $data['end_time'] = Carbon::parse($request->end_time, 'Asia/Kuala_Lumpur')->setTimezone('UTC');
+        }
+
+        Exam::create($data);
 
         return redirect()->route('admin.exams.index')->with('success', 'Exam created successfully.');
     }
@@ -78,7 +90,17 @@ class ExamController extends Controller
             'end_time' => 'nullable|date|after:start_time',
         ]);
 
-        $exam->update($request->all());
+        $data = $request->all();
+
+        if ($request->filled('start_time')) {
+            $data['start_time'] = Carbon::parse($request->start_time, 'Asia/Kuala_Lumpur')->setTimezone('UTC');
+        }
+
+        if ($request->filled('end_time')) {
+            $data['end_time'] = Carbon::parse($request->end_time, 'Asia/Kuala_Lumpur')->setTimezone('UTC');
+        }
+
+        $exam->update($data);
 
         return redirect()->route('admin.exams.index')->with('success', 'Exam updated successfully.');
     }
@@ -108,27 +130,83 @@ class ExamController extends Controller
     {
         $request->validate([
             'question_title' => 'required|string',
-            'type' => 'required|in:1,2', // 1=MCQ, 2=Text
+            'type' => 'required|in:1,2',
             'question_score' => 'required|integer|min:1',
-            // Options required only if MCQ
             'question_options' => 'required_if:type,1|array|min:2',
-            'question_answer' => 'required|string',
+            'question_answer' => 'required_if:type,1',
         ]);
 
-        $options = $request->type == 1 ? $request->question_options : null;
+        $options = null;
+        $answer = $request->question_answer;
 
-        // For MCQ, question_answer should be one of the options (usually the text or key).
-        // Let's assume we store the exact text of the correct option for simplicity given the requirement 
-        // "question_answer (text)".
+        if ($request->type == 1) {
+            $options = array_values(array_filter($request->question_options, fn($value) => !is_null($value) && $value !== ''));
+            if (count($options) < 2) {
+                return back()->withErrors(['question_options' => 'At least 2 valid options are required for MCQ.']);
+            }
+
+            if (!is_array($answer)) {
+                return back()->withErrors(['question_answer' => 'Please select at least one correct answer.']);
+            }
+        }
 
         $exam->questions()->create([
             'question_title' => $request->question_title,
             'type' => $request->type,
             'question_score' => $request->question_score,
             'question_options' => $options,
-            'question_answer' => $request->question_answer,
+            'question_answer' => $answer,
         ]);
 
         return back()->with('success', 'Question added successfully.');
+    }
+
+    public function destroyQuestion(Exam $exam, Question $question)
+    {
+        if ($question->exam_id !== $exam->id) {
+            abort(404);
+        }
+
+        $question->delete();
+
+        return back()->with('success', 'Question deleted successfully.');
+    }
+    public function updateQuestion(Request $request, Exam $exam, Question $question)
+    {
+        if ($question->exam_id !== $exam->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'question_title' => 'required|string',
+            'type' => 'required|in:1,2',
+            'question_score' => 'required|integer|min:1',
+            'question_options' => 'required_if:type,1|array|min:2',
+            'question_answer' => 'required_if:type,1',
+        ]);
+
+        $options = null;
+        $answer = $request->question_answer;
+
+        if ($request->type == 1) {
+            $options = array_values(array_filter($request->question_options, fn($value) => !is_null($value) && $value !== ''));
+            if (count($options) < 2) {
+                return back()->withErrors(['question_options' => 'At least 2 valid options are required for MCQ.']);
+            }
+
+            if (!is_array($answer)) {
+                return back()->withErrors(['question_answer' => 'Please select at least one correct answer.']);
+            }
+        }
+
+        $question->update([
+            'question_title' => $request->question_title,
+            'type' => $request->type,
+            'question_score' => $request->question_score,
+            'question_options' => $options,
+            'question_answer' => $answer,
+        ]);
+
+        return back()->with('success', 'Question updated successfully.');
     }
 }

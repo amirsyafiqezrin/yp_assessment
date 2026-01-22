@@ -35,7 +35,6 @@ class SubjectController extends Controller
             'code' => 'required|string|max:50|unique:subjects',
         ]);
 
-        // Assuming current user is the lecturer creating it
         $data = $request->all();
         $data['lecturer_id'] = auth()->id();
 

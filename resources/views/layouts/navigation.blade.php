@@ -46,6 +46,8 @@
                         </x-nav-link>
                     @endif
                 </div>
+
+                <!-- Theme Toggle Button Removed -->
             </div>
 
             <!-- Settings Dropdown -->
@@ -111,26 +113,31 @@
                 <x-responsive-nav-link :href="route('admin.classes.index')" :active="request()->routeIs('admin.classes.*')">
                     {{ __('Classes') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.subjects.index')" :active="request()->routeIs('admin.subjects.*')">
+                <x-responsive-nav-link :href="route('admin.subjects.index')"
+                    :active="request()->routeIs('admin.subjects.*')">
                     {{ __('Subjects') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.students.index')" :active="request()->routeIs('admin.students.*')">
+                <x-responsive-nav-link :href="route('admin.students.index')"
+                    :active="request()->routeIs('admin.students.*')">
                     {{ __('Students') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.exams.index')" :active="request()->routeIs('admin.exams.*')">
                     {{ __('Exams') }}
                 </x-responsive-nav-link>
-                 <x-responsive-nav-link :href="route('admin.submissions.index')" :active="request()->routeIs('admin.submissions.*')">
+                <x-responsive-nav-link :href="route('admin.submissions.index')"
+                    :active="request()->routeIs('admin.submissions.*')">
                     {{ __('Submissions') }}
                 </x-responsive-nav-link>
             @else
                 <x-responsive-nav-link :href="route('student.dashboard')" :active="request()->routeIs('student.dashboard')">
                     {{ __('Dashboard') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('student.exams.index')" :active="request()->routeIs('student.exams.index')">
+                <x-responsive-nav-link :href="route('student.exams.index')"
+                    :active="request()->routeIs('student.exams.index')">
                     {{ __('All Exams') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('student.exams.history')" :active="request()->routeIs('student.exams.history')">
+                <x-responsive-nav-link :href="route('student.exams.history')"
+                    :active="request()->routeIs('student.exams.history')">
                     {{ __('History') }}
                 </x-responsive-nav-link>
             @endif

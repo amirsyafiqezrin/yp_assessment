@@ -52,10 +52,6 @@ class ClassController extends Controller
      */
     public function edit(SchoolClass $class)
     {
-        // Route binding handles finding the class
-        // Note: Route parameter is 'class' but model is SchoolClass, confirm binding in route or use id
-        // In web.php we used resource 'classes', so param is 'class'. 
-        // Laravel implicitly binds {class} to SchoolClass if typehinted.
         return view('admin.classes.edit', compact('class'));
     }
 
@@ -88,15 +84,6 @@ class ClassController extends Controller
             'subject_ids' => 'required|array',
             'subject_ids.*' => 'exists:subjects,id',
         ]);
-
-        // Sync subjects (this will overwrite existing associations if not using attach, 
-        // usually sync is safer for a checkbox list, or attach for adding one by one. 
-        // Let's assume a form where they select all subjects for the class)
-        // If the UI is "Add Subject", use attach. If "Manage Subjects", use sync.
-        // Given requirements "Assign Subject to Class", sync is often better for "Manage" style.
-        // But if it's a simple "Add" button, attach is better.
-        // Let's go with syncWithoutDetaching if we want to add, or sync if we want to strict set.
-        // Let's use sync to be robust.
 
         $schoolClass->subjects()->sync($request->subject_ids);
 

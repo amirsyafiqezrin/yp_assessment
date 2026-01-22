@@ -36,12 +36,12 @@
                             <div class="mb-4">
                                 <x-input-label for="start_time" :value="__('Start Time (Optional)')" />
                                 <x-text-input id="start_time" class="block mt-1 w-full" type="datetime-local"
-                                    name="start_time" :value="$exam->start_time" />
+                                    name="start_time" :value="$exam->start_time ? $exam->start_time->setTimezone('Asia/Kuala_Lumpur')->format('Y-m-d\TH:i') : ''" />
                             </div>
                             <div class="mb-4">
                                 <x-input-label for="end_time" :value="__('End Time (Optional)')" />
                                 <x-text-input id="end_time" class="block mt-1 w-full" type="datetime-local"
-                                    name="end_time" :value="$exam->end_time" />
+                                    name="end_time" :value="$exam->end_time ? $exam->end_time->setTimezone('Asia/Kuala_Lumpur')->format('Y-m-d\TH:i') : ''" />
                             </div>
                         </div>
 

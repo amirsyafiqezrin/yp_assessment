@@ -4,14 +4,26 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Submission;
+use App\Models\SubmissionQuestion;
 use Illuminate\Http\Request;
 
 class SubmissionController extends Controller
 {
     public function index()
     {
-        $submissions = Submission::with(['user', 'exam'])->latest()->paginate(10);
-        return view('admin.submissions.index', compact('submissions'));
+        $allSubmissions = Submission::with(['user.schoolClass', 'exam', 'submissionQuestions'])->latest()->get();
+
+        $pendingSubmissions = $allSubmissions->filter(function ($submission) {
+            return $submission->submissionQuestions->contains('status', SubmissionQuestion::STATUS_PENDING);
+        });
+
+        $gradedSubmissions = $allSubmissions->reject(function ($submission) {
+            return $submission->submissionQuestions->contains('status', SubmissionQuestion::STATUS_PENDING);
+        })->groupBy(function ($submission) {
+            return $submission->user->schoolClass ? $submission->user->schoolClass->name : 'Unassigned Class';
+        });
+
+        return view('admin.submissions.index', compact('pendingSubmissions', 'gradedSubmissions'));
     }
 
     public function show(Submission $submission)
@@ -35,13 +47,9 @@ class SubmissionController extends Controller
             $subQuestion = $submission->submissionQuestions()->where('question_id', $questionId)->first();
 
             if ($subQuestion) {
-                // Update specific question score and feedback
                 $feedback = $request->feedback[$questionId] ?? $subQuestion->feedback;
 
-                // Determine status manually if needed, or arguably if score > 0 it's correct/partial
-                // But let's just stick to score update.
-                $status = ($score > 0) ? \App\Models\SubmissionQuestion::STATUS_CORRECT : \App\Models\SubmissionQuestion::STATUS_INCORRECT;
-                // If score is different from max, maybe partial? Let's leave status inference simple or manual.
+                $status = ($score > 0) ? SubmissionQuestion::STATUS_CORRECT : SubmissionQuestion::STATUS_INCORRECT;
 
                 $subQuestion->update([
                     'score' => $score,
@@ -51,7 +59,6 @@ class SubmissionController extends Controller
             }
         }
 
-        // Recalculate total score from fresh DB data to be safe
         $totalScore = $submission->submissionQuestions()->sum('score');
 
         $submission->update([

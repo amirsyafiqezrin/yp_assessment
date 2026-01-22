@@ -6,19 +6,33 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SubmissionQuestion;
 use App\Models\Exam;
+use App\Models\Subject;
 use App\Models\Submission;
+use App\Models\User;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // Alert Logic: Count pending open-text questions
-        // In a real app, filtering by lecturer's subjects would be better.
-        // Assuming Admin sees all for now or filter by Auth user's subjects.
-
         $lecturerId = auth()->id();
 
-        // Get exams created by this lecturer (via subjects)
+        $subjects = Subject::where('lecturer_id', $lecturerId)->get();
+        $totalStudents = User::where('role', 'student')
+            ->whereHas('schoolClass', function ($q) use ($subjects) {
+                $q->whereIn('id', $subjects->pluck('classes')->flatten()->pluck('id'));
+            })->distinct()->count();
+
+        $subjectStudentCounts = [];
+        foreach ($subjects as $subject) {
+            $count = User::where('role', 'student')
+                ->whereHas('schoolClass', function ($q) use ($subject) {
+                    $q->whereHas('subjects', function ($subQ) use ($subject) {
+                        $subQ->where('subjects.id', $subject->id);
+                    });
+                })->count();
+            $subjectStudentCounts[$subject->name] = $count;
+        }
+
         $exams = Exam::whereHas('subject', function ($q) use ($lecturerId) {
             $q->where('lecturer_id', $lecturerId);
         })->pluck('id');
@@ -29,6 +43,20 @@ class DashboardController extends Controller
             })
             ->count();
 
-        return view('admin.dashboard', compact('pendingGradingCount'));
+        $pendingSubmissionsCount = Submission::whereIn('exam_id', $exams)
+            ->whereNotNull('submitted_at')
+            ->whereHas('submissionQuestions', function ($q) {
+                $q->where('status', SubmissionQuestion::STATUS_PENDING);
+            })->count();
+
+        $totalSubjects = Subject::where('lecturer_id', $lecturerId)->count();
+
+        $totalAvailableExams = Exam::whereHas('subject', function ($q) use ($lecturerId) {
+            $q->where('lecturer_id', $lecturerId);
+        })
+            ->where('end_time', '>=', now())
+            ->count();
+
+        return view('admin.dashboard', compact('pendingGradingCount', 'totalStudents', 'subjectStudentCounts', 'pendingSubmissionsCount', 'totalSubjects', 'totalAvailableExams'));
     }
 }

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            <h2 class="font-semibold text-xl text-black leading-tight">
                 {{ $exam->title }}
             </h2>
             <a href="{{ route('admin.exams.index') }}" class="text-sm text-gray-600 dark:text-gray-400 hover:underline">Back to List</a>
@@ -59,9 +59,19 @@
                                     @if($question->type == 1)
                                         <div class="mt-2 text-sm text-gray-500">
                                             <p>Options: {{ implode(', ', $question->question_options) }}</p>
-                                            <p class="text-green-600">Correct Answer: {{ $question->question_answer }}</p>
+                                            <p class="text-green-600">Correct Answer: {{ is_array($question->question_answer) ? implode(', ', $question->question_answer) : $question->question_answer }}</p>
                                         </div>
                                     @endif
+
+                                    <div class="mt-4 flex space-x-2">
+                                        <button onclick="openEditModal({{ json_encode($question) }})" class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded hover:bg-yellow-200">Edit</button>
+                                        
+                                        <form action="{{ route('admin.exams.questions.destroy', [$exam, $question]) }}" method="POST" onsubmit="return confirm('Are you sure?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200">Remove</button>
+                                        </form>
+                                    </div>
                                 </div>
                             @empty
                                 <p class="text-gray-500 text-center py-4">No questions added yet.</p>
@@ -81,7 +91,6 @@
                 @csrf
                 <div class="max-h-60 overflow-y-auto space-y-2 mb-4">
                     @php
-                        // Filter classes: Only those that have the exam's subject assigned
                         $eligibleClasses = $exam->subject->classes; 
                     @endphp
 
@@ -110,7 +119,7 @@
     <div id="add-question-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-10 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white dark:bg-gray-800">
             <h3 class="text-lg font-medium text-center dark:text-white mb-4">Add New Question</h3>
-            <form action="{{ route('admin.exams.questions.store', $exam) }}" method="POST">
+            <form action="{{ route('admin.exams.questions.store', $exam) }}" method="POST" onsubmit="return validateQuestionForm(this)">
                 @csrf
                 
                 <div class="mb-4">
@@ -121,7 +130,7 @@
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <x-input-label for="type" :value="__('Type')" />
-                        <select id="type" name="type" onchange="toggleOptions(this.value)" class="block mt-1 w-full border-gray-300 rounded-md shadow-sm">
+                        <select id="type" name="type" onchange="toggleOptions(this.value, 'add')" class="block mt-1 w-full border-gray-300 rounded-md shadow-sm">
                             <option value="1">Multiple Choice (MCQ)</option>
                             <option value="2">Open Text</option>
                         </select>
@@ -132,25 +141,30 @@
                     </div>
                 </div>
 
-                <!-- MCQ Options Section -->
-                <div id="mcq_section" class="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
-                    <label class="block mb-2 font-bold text-sm">Options (Enter at least 2)</label>
-                    <div class="space-y-2">
-                        <input type="text" name="question_options[]" placeholder="Option A" class="block w-full text-sm border-gray-300 rounded">
-                        <input type="text" name="question_options[]" placeholder="Option B" class="block w-full text-sm border-gray-300 rounded">
-                        <input type="text" name="question_options[]" placeholder="Option C" class="block w-full text-sm border-gray-300 rounded">
-                        <input type="text" name="question_options[]" placeholder="Option D" class="block w-full text-sm border-gray-300 rounded">
+            <!-- MCQ Options Section -->
+                <div id="mcq_section_add" class="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
+                    <label class="block mb-2 font-bold text-sm">Options & Correct Answer</label>
+                    <p class="text-xs text-gray-500 mb-2">Check the box next to the correct answer(s).</p>
+                    
+                    <div id="options_container_add" class="space-y-2">
+                        <div class="flex items-center space-x-2 option-row">
+                            <input type="checkbox" name="question_answer[]" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 answer-checkbox">
+                            <input type="text" name="question_options[]" placeholder="Option 1" required class="block w-full text-sm border-gray-300 rounded option-input">
+                            <button type="button" class="text-red-500 hover:text-red-700 remove-option hidden">&times;</button>
+                        </div>
+                        <div class="flex items-center space-x-2 option-row">
+                            <input type="checkbox" name="question_answer[]" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 answer-checkbox">
+                            <input type="text" name="question_options[]" placeholder="Option 2" required class="block w-full text-sm border-gray-300 rounded option-input">
+                            <button type="button" class="text-red-500 hover:text-red-700 remove-option hidden">&times;</button>
+                        </div>
                     </div>
-                    <div class="mt-4">
-                         <x-input-label for="answer" :value="__('Correct Answer (Must match one option exactly)')" />
-                         <x-text-input id="answer" class="block mt-1 w-full" type="text" name="question_answer" placeholder="e.g. Option A's text" />
-                    </div>
+
+                    <button type="button" onclick="addOption('add')" class="mt-2 text-sm text-blue-600 hover:underline">+ Add Option</button>
                 </div>
 
-                <!-- Text Answer Section (Hidden by default) -->
-                <div id="text_section" class="mb-4 hidden">
-                     <x-input-label for="model_answer" :value="__('Model Answer (For AI Reference)')" />
-                     <textarea id="model_answer" name="question_answer" rows="3" disabled class="block mt-1 w-full border-gray-300 rounded shadow-sm"></textarea>
+                <div id="text_section_add" class="mb-4 hidden">
+                     <x-input-label for="model_answer_add" :value="__('Model Answer (For AI Reference)')" />
+                     <textarea id="model_answer_add" name="question_answer" rows="3" disabled class="block mt-1 w-full border-gray-300 rounded shadow-sm"></textarea>
                 </div>
 
                 <div class="flex justify-end space-x-2">
@@ -161,24 +175,178 @@
         </div>
     </div>
 
-    <script>
-        function toggleOptions(type) {
-            const mcqSection = document.getElementById('mcq_section');
-            const textSection = document.getElementById('text_section');
-            const mcqInputs = mcqSection.querySelectorAll('input, select');
-            const textInput = document.getElementById('model_answer');
+    <!-- Edit Question Modal -->
+    <div id="edit-question-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-10 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <h3 class="text-lg font-medium text-center dark:text-white mb-4">Edit Question</h3>
+            <form id="edit-question-form" method="POST" onsubmit="return validateQuestionForm(this)">
+                @csrf
+                @method('PUT')
+                
+                <div class="mb-4">
+                    <x-input-label for="edit_q_title" :value="__('Question Text')" />
+                    <x-text-input id="edit_q_title" class="block mt-1 w-full" type="text" name="question_title" required />
+                </div>
 
-            if (type == '1') { // MCQ
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <x-input-label for="edit_type" :value="__('Type')" />
+                        <select id="edit_type" name="type" onchange="toggleOptions(this.value, 'edit')" class="block mt-1 w-full border-gray-300 rounded-md shadow-sm">
+                            <option value="1">Multiple Choice (MCQ)</option>
+                            <option value="2">Open Text</option>
+                        </select>
+                    </div>
+                    <div>
+                        <x-input-label for="edit_score" :value="__('Score')" />
+                        <x-text-input id="edit_score" class="block mt-1 w-full" type="number" name="question_score" required min="1" />
+                    </div>
+                </div>
+
+                <!-- MCQ Options Section -->
+                <div id="mcq_section_edit" class="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
+                    <label class="block mb-2 font-bold text-sm">Options & Correct Answer</label>
+                    <div id="options_container_edit" class="space-y-2">
+                    </div>
+                    <button type="button" onclick="addOption('edit')" class="mt-2 text-sm text-blue-600 hover:underline">+ Add Option</button>
+                </div>
+
+                <!-- Text Answer Section -->
+                <div id="text_section_edit" class="mb-4 hidden">
+                     <x-input-label for="model_answer_edit" :value="__('Model Answer (For AI Reference)')" />
+                     <textarea id="model_answer_edit" name="question_answer" rows="3" class="block mt-1 w-full border-gray-300 rounded shadow-sm"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="document.getElementById('edit-question-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Update Question</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setupOptionListeners('add');
+            setupOptionListeners('edit');
+        });
+
+        function setupOptionListeners(mode) {
+             const container = document.getElementById(`options_container_${mode}`);
+             
+             container.addEventListener('input', function(e) {
+                if (e.target.classList.contains('option-input')) {
+                    const row = e.target.closest('.option-row');
+                    const checkbox = row.querySelector('.answer-checkbox');
+                    checkbox.value = e.target.value;
+                }
+            });
+
+             container.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-option')) {
+                    e.target.closest('.option-row').remove();
+                    updateRemoveButtons(mode);
+                }
+            });
+        }
+
+        function addOption(mode, value = '', isCorrect = false) {
+            const container = document.getElementById(`options_container_${mode}`);
+            const rowCount = container.querySelectorAll('.option-row').length + 1;
+            
+            const newRow = document.createElement('div');
+            newRow.className = 'flex items-center space-x-2 option-row';
+            newRow.innerHTML = `
+                <input type="checkbox" name="question_answer[]" value="${value}" ${isCorrect ? 'checked' : ''} class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 answer-checkbox">
+                <input type="text" name="question_options[]" value="${value}" placeholder="Option" required class="block w-full text-sm border-gray-300 rounded option-input">
+                <button type="button" class="text-red-500 hover:text-red-700 remove-option text-lg font-bold px-2">&times;</button>
+            `;
+            container.appendChild(newRow);
+            updateRemoveButtons(mode);
+        }
+
+        function updateRemoveButtons(mode) {
+            const container = document.getElementById(`options_container_${mode}`);
+            const rows = container.querySelectorAll('.option-row');
+            rows.forEach(row => {
+                const btn = row.querySelector('.remove-option');
+                if (rows.length > 2) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            });
+        }
+
+        function toggleOptions(type, mode) {
+            const mcqSection = document.getElementById(`mcq_section_${mode}`);
+            const textSection = document.getElementById(`text_section_${mode}`);
+            const mcqInputs = mcqSection.querySelectorAll('input, select');
+            const textInput = document.getElementById(`model_answer_${mode}`);
+
+            if (type == '1') {
                 mcqSection.classList.remove('hidden');
                 textSection.classList.add('hidden');
                 textInput.disabled = true;
+                textInput.name = ""; 
                 mcqInputs.forEach(el => el.disabled = false);
-            } else { // Text
+            } else {
                 mcqSection.classList.add('hidden');
                 textSection.classList.remove('hidden');
                 textInput.disabled = false;
+                textInput.name = "question_answer";
                 mcqInputs.forEach(el => el.disabled = true);
             }
+        }
+
+        function openEditModal(question) {
+            const modal = document.getElementById('edit-question-modal');
+            const form = document.getElementById('edit-question-form');
+            
+            form.action = `/admin/exams/${question.exam_id}/questions/${question.id}`;
+            
+            document.getElementById('edit_q_title').value = question.question_title;
+            document.getElementById('edit_score').value = question.question_score;
+            document.getElementById('edit_type').value = question.type;
+            
+            const container = document.getElementById('options_container_edit');
+            container.innerHTML = '';
+            
+            const textArea = document.getElementById('model_answer_edit');
+            textArea.value = '';
+
+            if (question.type == 1) {
+                const correctAnswers = Array.isArray(question.question_answer) ? question.question_answer : [question.question_answer];
+                
+                question.question_options.forEach(opt => {
+                     const isCorrect = correctAnswers.includes(opt);
+                     addOption('edit', opt, isCorrect);
+                });
+            } else {
+                textArea.value = Array.isArray(question.question_answer) ? question.question_answer[0] : question.question_answer;
+                 addOption('edit');
+                 addOption('edit');
+            }
+
+            toggleOptions(question.type, 'edit');
+            modal.classList.remove('hidden');
+        }
+
+        function validateQuestionForm(form) {
+            const typeSelect = form.querySelector('select[name="type"]');
+            
+            if (typeSelect.value == '1') {
+                const checkboxes = form.querySelectorAll('input[name="question_answer[]"]');
+                let checked = false;
+                checkboxes.forEach(cb => {
+                    if (cb.checked) checked = true;
+                });
+
+                if (!checked) {
+                    alert('Please select at least one correct answer for the MCQ.');
+                    return false;
+                }
+            }
+            return true;
         }
     </script>
 </x-app-layout>

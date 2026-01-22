@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -20,8 +21,8 @@ class RoleMiddleware
         }
 
         $roleValue = match ($role) {
-            'lecturer' => \App\Models\User::ROLE_LECTURER,
-            'student' => \App\Models\User::ROLE_STUDENT,
+            'lecturer' => User::ROLE_LECTURER,
+            'student' => User::ROLE_STUDENT,
             default => null,
         };
 

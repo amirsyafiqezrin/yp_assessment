@@ -8,6 +8,7 @@ use App\Models\SchoolClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rules\Password;
 
 class StudentController extends Controller
 {
@@ -16,7 +17,6 @@ class StudentController extends Controller
      */
     public function index()
     {
-        // Filter only students
         $students = User::where('role', User::ROLE_STUDENT)->with('schoolClass')->paginate(10);
         return view('admin.students.index', compact('students'));
     }
@@ -38,7 +38,7 @@ class StudentController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => ['required', 'confirmed', Password::defaults()],
             'class_id' => ['nullable', 'exists:classes,id'],
         ]);
 
@@ -89,7 +89,7 @@ class StudentController extends Controller
 
         if ($request->filled('password')) {
             $request->validate([
-                'password' => ['confirmed', Rules\Password::defaults()],
+                'password' => ['confirmed', Password::defaults()],
             ]);
             $student->update([
                 'password' => Hash::make($request->password),

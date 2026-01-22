@@ -20,6 +20,7 @@ class Question extends Model
 
     protected $casts = [
         'question_options' => 'array',
+        'question_answer' => 'array',
     ];
 
     const TYPE_MCQ = 1;

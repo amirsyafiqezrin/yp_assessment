@@ -5,25 +5,66 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\Submission;
+use App\Models\SubmissionQuestion;
+use App\Models\Question;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class ExamController extends Controller
 {
     public function index()
     {
-        // Similar to dashboard, show list of available exams
-        return view('student.exams.index');
+        $user = auth()->user();
+        if (!$user->class_id) {
+            $exams = collect();
+        } else {
+            $exams = Exam::whereHas('classes', function ($q) use ($user) {
+                $q->where('classes.id', $user->class_id);
+            })
+                ->whereDoesntHave('submissions', function ($q) use ($user) {
+                    $q->where('user_id', $user->id)->whereNotNull('submitted_at');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('start_time')->orWhere('start_time', '<=', now());
+                })
+                ->where(function ($q) {
+                    $q->whereNull('end_time')->orWhere('end_time', '>', now());
+                })
+                ->with('subject')
+                ->latest()
+                ->get();
+        }
+
+        return view('student.exams.index', compact('exams'));
     }
 
     public function show(Exam $exam)
     {
-        // Show exam instruction page before starting
-        return view('student.exams.show', compact('exam'));
+        if ($exam->end_time && now()->gt($exam->end_time)) {
+            return redirect()->route('student.exams.index')->with('error', 'This exam has ended and can no longer be taken.');
+        }
+
+        if ($exam->start_time && now()->lt($exam->start_time)) {
+            return redirect()->route('student.exams.index')->with('error', 'This exam has not started yet.');
+        }
+
+        $submission = Submission::where('user_id', auth()->id())
+            ->where('exam_id', $exam->id)
+            ->first();
+
+        return view('student.exams.show', compact('exam', 'submission'));
     }
 
     public function start(Request $request, Exam $exam)
     {
-        // Create a submission record to track start time
+        if ($exam->end_time && now()->gt($exam->end_time)) {
+            return redirect()->route('student.exams.index')->with('error', 'This exam has ended.');
+        }
+
+        if ($exam->start_time && now()->lt($exam->start_time)) {
+            return redirect()->route('student.exams.index')->with('error', 'This exam has not started yet.');
+        }
+
         $submission = Submission::firstOrCreate(
             [
                 'user_id' => auth()->id(),
@@ -39,23 +80,33 @@ class ExamController extends Controller
 
     public function take(Exam $exam)
     {
+        if ($exam->end_time && now()->gt($exam->end_time)) {
+            return redirect()->route('student.exams.history')->with('error', 'The exam availability period has ended.');
+        }
+
+        if ($exam->start_time && now()->lt($exam->start_time)) {
+            return redirect()->route('student.exams.index')->with('error', 'This exam has not started yet.');
+        }
+
         $submission = Submission::where('user_id', auth()->id())
             ->where('exam_id', $exam->id)
             ->firstOrFail();
 
-        // If already submitted, redirect to history or show error
         if ($submission->submitted_at) {
             return redirect()->route('student.exams.history')->with('error', 'You have already submitted this exam.');
         }
 
-        return view('student.exams.take', compact('exam', 'submission'));
+        $startTime = Carbon::parse($submission->started_at);
+        $endTime = $startTime->copy()->addMinutes($exam->time_limit);
+        $remainingSeconds = max(0, now()->diffInSeconds($endTime, false));
+
+        return view('student.exams.take', compact('exam', 'submission', 'remainingSeconds'));
     }
 
     public function submit(Request $request, Exam $exam)
     {
         $request->validate([
-            'answers' => 'required|array',
-            'answers.*' => 'required', // answer for each question
+            'answers' => 'nullable|array',
         ]);
 
         $submission = Submission::where('user_id', auth()->id())
@@ -67,40 +118,70 @@ class ExamController extends Controller
         }
 
         $totalScore = 0;
+        $answers = $request->answers ?? [];
 
-        foreach ($request->answers as $questionId => $userAnswer) {
-            $question = $exam->questions->find($questionId);
-            if (!$question)
-                continue;
+        foreach ($exam->questions as $question) {
+            $userAnswer = $answers[$question->id] ?? null;
 
             $score = 0;
-            $status = \App\Models\SubmissionQuestion::STATUS_PENDING;
+            $status = SubmissionQuestion::STATUS_PENDING;
             $feedback = null;
 
-            if ($question->type == \App\Models\Question::TYPE_MCQ) {
-                // Auto-grade MCQ
-                // correct_answer is stored as simple string "A" or "Paris" etc.
-                if ($userAnswer == $question->question_answer) {
-                    $score = $question->question_score;
-                    $status = \App\Models\SubmissionQuestion::STATUS_CORRECT;
-                } else {
-                    $score = 0;
-                    $status = \App\Models\SubmissionQuestion::STATUS_INCORRECT;
-                }
-            } elseif ($question->type == \App\Models\Question::TYPE_TEXT) {
-                // AI Grading Placeholder
-                // In a real app, you might dispatch a job here or call an external service.
-                // For this assessment, we'll simulate a call.
-                $aiResult = $this->gradeOpenTextWithAI($userAnswer, $question->question_answer, $question->question_score);
-                $score = $aiResult['score'];
-                $status = $aiResult['status'];
-                $feedback = $aiResult['feedback'];
+            $hasAnswer = false;
+            if (is_array($userAnswer)) {
+                $hasAnswer = !empty($userAnswer);
+            } else {
+                $hasAnswer = !is_null($userAnswer) && $userAnswer !== '';
             }
 
-            \App\Models\SubmissionQuestion::create([
+            if (!$hasAnswer) {
+                $score = 0;
+                $status = SubmissionQuestion::STATUS_INCORRECT;
+                $feedback = "Not Answered";
+                $userAnswer = null;
+            } else {
+                if ($question->type == Question::TYPE_MCQ) {
+                    $correctAnswers = $question->question_answer ?? [];
+                    if (!is_array($correctAnswers))
+                        $correctAnswers = [];
+
+                    $userSelected = is_array($userAnswer) ? $userAnswer : [$userAnswer];
+
+                    $matches = array_intersect($userSelected, $correctAnswers);
+                    $correctCount = count($matches);
+                    $totalCorrect = count($correctAnswers);
+
+                    $mistakes = array_diff($userSelected, $correctAnswers);
+                    $mistakeCount = count($mistakes);
+
+                    if ($totalCorrect > 0) {
+                        $ratio = max(0, ($correctCount - $mistakeCount) / $totalCorrect);
+                        $score = round($ratio * $question->question_score, 2);
+                    } else {
+                        $score = 0;
+                    }
+
+                    if ($score == $question->question_score) {
+                        $status = SubmissionQuestion::STATUS_CORRECT;
+                    } elseif ($score > 0) {
+                        $status = SubmissionQuestion::STATUS_CORRECT;
+                    } else {
+                        $status = SubmissionQuestion::STATUS_INCORRECT;
+                    }
+
+                    $feedback = "Final Score: $score / " . $question->question_score;
+
+                } elseif ($question->type == Question::TYPE_TEXT) {
+                    $score = 0;
+                    $status = SubmissionQuestion::STATUS_PENDING;
+                    $feedback = "Pending Grading";
+                }
+            }
+
+            SubmissionQuestion::create([
                 'submission_id' => $submission->id,
                 'question_id' => $question->id,
-                'submission_answer' => $userAnswer,
+                'submission_answer' => is_array($userAnswer) ? json_encode($userAnswer) : $userAnswer,
                 'score' => $score,
                 'status' => $status,
                 'feedback' => $feedback,
@@ -117,51 +198,39 @@ class ExamController extends Controller
         return redirect()->route('student.exams.history')->with('success', 'Exam submitted successfully! Total Score: ' . $totalScore);
     }
 
-    /**
-     * Simulate AI Grading
-     */
-    private function gradeOpenTextWithAI($studentAnswer, $modelAnswer, $maxScore)
+    public function review(Exam $exam)
     {
-        try {
-            // Attempt to call AI Service (simulated)
-            // throw new \Exception("AI Service Unavailable"); // Uncomment to test fallback logic
+        $submission = Submission::where('user_id', auth()->id())
+            ->where('exam_id', $exam->id)
+            ->whereNotNull('submitted_at')
+            ->with(['submissionQuestions.question'])
+            ->firstOrFail();
 
-            // Simulation of successful response
-            // return [
-            //    'score' => $calculatedScore,
-            //    'status' => ...,
-            //    'feedback' => ...
-            // ];
-
-            // For now, let's treat the default path as "queued for AI" or "pending" 
-            // because we don't have the real API key here. 
-            // The requirement says: "make a fallback if feature is not usable... keep both options"
-
-            // Returning pending essentially triggers the manual fallback workflow.
-            return [
-                'score' => 0,
-                'status' => \App\Models\SubmissionQuestion::STATUS_PENDING,
-                'feedback' => 'Pending Grading (AI Service Placeholder)',
-            ];
-
-        } catch (\Exception $e) {
-            // FALLBACK: If AI fails, mark as pending for manual review
-            return [
-                'score' => 0,
-                'status' => \App\Models\SubmissionQuestion::STATUS_PENDING,
-                'feedback' => 'AI Grading Failed. Pending Manual Review.',
-            ];
-        }
+        return view('student.exams.review', compact('exam', 'submission'));
     }
 
     public function history()
     {
-        $submissions = Submission::where('user_id', auth()->id())
-            ->whereNotNull('submitted_at')
-            ->with('exam')
+        $user = auth()->user();
+
+        $exams = Exam::whereHas('classes', function ($q) use ($user) {
+            $q->where('classes.id', $user->class_id);
+        })
+            ->where(function ($q) use ($user) {
+                $q->whereHas('submissions', function ($sq) use ($user) {
+                    $sq->where('user_id', $user->id)->whereNotNull('submitted_at');
+                })
+                    ->orWhere('end_time', '<', now());
+            })
+            ->with([
+                'submissions' => function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                },
+                'subject'
+            ])
             ->latest()
             ->get();
 
-        return view('student.exams.history', compact('submissions'));
+        return view('student.exams.history', compact('exams'));
     }
 }

@@ -1,70 +1,110 @@
-<<<<<<< HEAD
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# YP Assessment Portal
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Project Title and Description
+**YP Assessment Portal** is a web-based examination management system designed for **Yayasan Peneraju Developer Assessment Skills**. It facilitates a secure and strict online assessment environment where:
+-   **Lecturers/Admins** can create subjects, classes, and exams with specific time windows.
+-   **Students** can take exams within a strict "active" window, with automatic submission enforcement.
 
-## About Laravel
+Key features include:
+-   **Strict Exam Visibility**: Exams are hidden until their start time.
+-   **Timezone Support**: Interface displays times in **Malaysia Time (MYT)** while storing data in **UTC**.
+-   **Security**: Navigation restrictions preventing students from leaving the exam page.
+-   **Role-Based Access**: Distinct dashboards for Lecturers and Students.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Author of the project
+-   **Name**: AMIR SYAFIQ BIN EZRIN
+-   **Email**: amirezrin2001@gmail.com
+-   **GitHub**: https://github.com/amirsyafiqezrin
+-   **LinkedIn**: https://www.linkedin.com/in/amirsyafiqezrin/
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Installation / Requirements / Prerequisites
+Ensure you have the following installed on your machine:
+-   **PHP** >= 8.2
+-   **Composer** (PHP Dependency Manager)
+-   **Node.js** & **NPM** (JavaScript Package Manager)
+-   **MySQL** (Database)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Tools Used
+-   **Framework**: [Laravel 11](https://laravel.com)
+-   **Frontend**: Blade Templates, [Tailwind CSS](https://tailwindcss.com), Alpine.js
+-   **Authentication**: Laravel Breeze
+-   **Database**: MySQL
+-   **Timezone**: Application logic handles UTC storage with `Asia/Kuala_Lumpur` display.
 
-## Learning Laravel
+## Instructions to Build (Installation)
+Follow these steps to set up the project locally:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1.  **Clone the Repository**
+    ```bash
+    git clone https://github.com/amirsyafiqezrin/yp_assessment.git
+    cd yp_assessment
+    ```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+2.  **Install PHP Dependencies**
+    ```bash
+    composer install
+    ```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+3.  **Install JavaScript Dependencies**
+    ```bash
+    npm install
+    ```
 
-## Laravel Sponsors
+4.  **Environment Setup**
+    -   Copy the example environment file:
+        ```bash
+        cp .env.example .env
+        ```
+    -   Open `.env` and configure your database settings:
+        ```env
+        DB_CONNECTION=mysql
+        DB_HOST=127.0.0.1
+        DB_PORT=3306
+        DB_DATABASE=yp_assessment
+        DB_USERNAME=root
+        DB_PASSWORD=
+        ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+5.  **Generate Application Key**
+    ```bash
+    php artisan key:generate
+    ```
 
-### Premium Partners
+6.  **Run Migrations & Seed Database**
+    This will create the tables and populate them with sample data (Lecturer/Student accounts).
+    ```bash
+    php artisan migrate --seed
+    ```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## Instructions to Run
+1.  **Start the Local Development Server**
+    ```bash
+    php artisan serve
+    ```
+    The application will be available at `http://localhost:8000`.
 
-## Contributing
+2.  **Start the Frontend Asset Builder** (in a new terminal)
+    ```bash
+    npm run dev
+    ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## User Credentials (Seed Data)
+If you ran `php artisan migrate --seed`, you can log in with:
 
-## Code of Conduct
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Lecturer** | `lecturer@yp.com` | `password` |
+| **Student** | `student@yp.com` | `password` |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-=======
-# yp_assessment
->>>>>>> e32ce399f6d8f7534e129d6bfc5b04a1ff03249f
+## Review Notes
+1.  Roles – The system will have two main roles: Lecturer and Student.
+2.  Authentication – Each user will have credentials for secure login.
+3.  Exam Creation – Lecturers will be able to create multiple-choice and open-text
+questions for various subjects.
+4.  Class Management – Students will be grouped into classes.
+5.  Subject Management – Each class will be associated with multiple subjects.
+6.  Access Control – Students will only be able to access exams that are assigned
+to their class.
+7.  Time Limit – Exams will have a time limit (e.g., 15 minutes).
+8.  Additional Features – You can include any additional features you consider
+important.
